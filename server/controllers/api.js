@@ -1,5 +1,6 @@
 const { data } = require("node-persist");
 const { getZones, updateZone, getTriggers, getLogs, resolveTrigger } = require("./storage");
+const { clients, WebSocket } = require("../shared/shared");
 
 async function handleGetZones(req, res) {
     try {
@@ -83,13 +84,22 @@ async function handleResolveTrigger(req, res) {
         });
 
     const resolved = await resolveTrigger({ id, remarks });
-    if (resolved)
+    if (resolved){
+
+        
+        clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ newLog:{data: "triggerResolved"} }));
+            }
+        });
+
         return res.status(200).json({
             success: true,
             message: "Trigger resolved.",
             data: resolved,
         });
-
+        
+    }
     return res.status(400).json({
         success: false,
         error: "failed to resolve trigger.",

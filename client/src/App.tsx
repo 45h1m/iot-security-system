@@ -1,35 +1,82 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { use, useEffect, useState } from "react";
+import { useWebSocket } from "./contexts/WebSocketContext";
+import Header from "./components/Header";
+import axios from "axios";
+import ZoneCard from "./components/ZoneCard";
+import TriggerManagement from "./components/TriggerManagement";
 
-function App() {
-  const [count, setCount] = useState(0)
+const App: React.FC = () => {
+    const [message, setMessage] = useState("");
+    const [zones, setZones]: any = useState({});
+    const [sortedZones, setSortedZones]: any = useState({});
+    const { sendMessage, lastMessage, isConnected, connectionError } = useWebSocket();
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    useEffect(() => {
+        getZones();
+    }, [lastMessage, isConnected]);
 
-export default App
+    const handleSend = () => {
+        if (message.trim()) {
+            sendMessage({ type: "chat", content: message });
+            setMessage("");
+        }
+    };
+
+    async function getZones() {
+        try {
+            const res = await axios.get("http://localhost:80/api/zones");
+            if (res.data.success && res.data.data) {
+                setZones(res.data.data);
+                console.log(res.data.data);
+            }
+            if (res.data.error) {
+                console.log(res.data.error);
+            }
+        } catch (error) {
+            console.log("Error getting zones: " + error);
+        }
+    }
+
+    const handleSaveZone = async (updatedZone: any, zoneKey: any) => {
+        try {
+            const res = await axios.post(`http://localhost:80/api/zones`, { ...updatedZone, id: zoneKey });
+            if (res.data.error) {
+                console.log(res.data.error);
+            }
+            if (res.data.success) {
+                getZones();
+            }
+        } catch (error) {
+            console.log("Error saving zone: " + error);
+        }
+    };
+
+    useEffect(() => {
+        getZones();
+    }, []);
+
+    return (
+        <div>
+            <Header isConnected={isConnected} logCount={27} />
+            <TriggerManagement />
+            <h2 className="text-2xl font-bold mb-4 text-white max-w-5xl mx-auto pl-4 mt-4">Zones</h2>
+            <div className="flex flex-wrap gap-2 px-4 max-w-5xl mx-auto">
+                {Object.keys(zones).map((zoneKey) => {
+                    if (zones[zoneKey].enabled)
+                        return <ZoneCard key={zoneKey} zone={zones[zoneKey]} onSave={(updatedZone: any) => handleSaveZone(updatedZone, zoneKey)} />;
+                    return null;
+                })}
+            </div>
+            <h3 className="text-sm mb-4 text-white max-w-5xl mx-auto pl-4 mt-4">Disabled</h3>
+            <div className="flex flex-wrap gap-2 px-4 max-w-5xl mx-auto">
+                {Object.keys(zones).map((zoneKey) => {
+                    if (!zones[zoneKey].enabled)
+                        return <ZoneCard key={zoneKey} zone={zones[zoneKey]} onSave={(updatedZone: any) => handleSaveZone(updatedZone, zoneKey)} />;
+                    return null;
+                })}
+            </div>
+        </div>
+    );
+};
+
+export default App;

@@ -1,10 +1,9 @@
 const { clients, WebSocket } = require("../shared/shared");
 const { setZoneData, getZones, setZones, getTriggers, createTrigger, createLog } = require("./storage");
 async function handleSensorData(data) {
-
     clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ sensorData:data }));
+            client.send(JSON.stringify({ sensorData: data }));
         }
     });
 }
@@ -13,6 +12,12 @@ async function handlePanic(data) {
     const res = await createTrigger({
         type: "panic",
         zone: "panic",
+    });
+
+    clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ newLog: data }));
+        }
     });
 
     if (!res) {
@@ -27,6 +32,11 @@ async function handleArmDisarm(data) {
             console.log("something went wrong while creating arm-disarm log.");
             return;
         }
+        clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ newLog: data }));
+            }
+        });
     } catch (error) {
         console.log("failed handling arm-disarm: " + error);
     }
@@ -42,13 +52,24 @@ async function handleTrigger(data) {
         }
     }
 
-    const res = await createTrigger({
-        type: "sensor",
-        zone: data.zone,
-    });
+    const zones = await getZones();
 
-    if (!res) {
-        console.log("Failed to createTrigger at handleTrigger");
+    console.log(zones['zone0']);
+
+    if (zones && zones[data.zone] && zones[data.zone].enabled) {
+        console.log("creating trigger")
+        const res = await createTrigger({
+            type: "trigger",
+            zone: data.zone,
+        });
+        if (!res) {
+            console.log("Failed to createTrigger at handleTrigger");
+        }
+        clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ newLog: data }));
+            }
+        });
     }
 }
 

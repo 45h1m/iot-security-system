@@ -59,7 +59,7 @@ async function updateZone(zone) {
         zones[zone.id].name = zone.name || zones[zone.id].name;
         zones[zone.id].description = zone.description || zones[zone.id].description;
         zones[zone.id].color = zone.color || zones[zone.id].color;
-        zones[zone.id].enabled = zone.enabled || zones[zone.id].enabled;
+        zones[zone.id].enabled = zone.enabled !== undefined? zone.enabled : zones[zone.id].enabled;
         
         await storage.setItem("zones", zones);
         return zones;
@@ -98,6 +98,7 @@ async function createTrigger(trigger) {
         return null;
     }
 
+    
     triggers.push({
         id: Date.now().toString(),
         type: trigger.type,
@@ -109,9 +110,14 @@ async function createTrigger(trigger) {
     });
 
     try {
+        if(trigger.type === "trigger") {
+            zones[trigger.zone].triggered = true;
+            zones[trigger.zone].lastTriggered = Date.now();
+            await storage.setItem("zones", zones);
+        }
         
         await storage.setItem("triggers", triggers);
-        await createLog({type: `trigger`, description: `Sensor of zone: '${trigger.zone}', triggered.`});
+        await createLog({type: trigger.type, description: `Sensor of zone: '${trigger.zone}', triggered.`});
         return triggers;
 
     } catch (error) {
@@ -119,6 +125,40 @@ async function createTrigger(trigger) {
     }
     return null;
 }
+
+async function resolveTrigger(data) {
+    if(!data.id || !data.remarks) {
+        console.log("failed to resolve trigger: id and remarks are required.")
+        return null;
+    }
+
+    let newTrigger = triggers.find((trigger) => trigger.id === data.id && trigger.resolved === false);
+
+    if(!newTrigger){
+        console.log("failed to resolve trigger: trigger not found.");
+        return null;
+    }
+
+    newTrigger.remarks = data.remarks;
+    newTrigger.resolveTime = Date.now();
+    newTrigger.resolved = true;
+    triggers = triggers.map((trigger)=> trigger.id === data.id ? newTrigger : trigger);
+
+    if(zones[newTrigger.zone])
+    zones[newTrigger.zone].triggered = false;
+
+    try {
+        
+        await storage.setItem("triggers", triggers);
+        await storage.setItem("zones", zones);
+        await createLog({type: `resolve`, description: `Trigger of zone: '${newTrigger.zone}', resolved.`});
+        return triggers;
+    } catch (error) {
+        console.log("Error resolving trigger: "+ error);
+    }
+    return null;
+}
+
 
 function getTriggers() {
     return triggers;
@@ -142,34 +182,6 @@ async function createLog(log) {
         return logs;
     } catch (error) {
         console.log("Error creating log: "+ error);
-    }
-    return null;
-}
-
-async function resolveTrigger(data) {
-    if(!data.id || !data.remarks) {
-        console.log("failed to resolve trigger: id and remarks are required.")
-        return null;
-    }
-
-    let newTrigger = triggers.find((trigger) => trigger.id === data.id && trigger.resolved === false);
-
-    if(!newTrigger){
-        console.log("failed to resolve trigger: trigger not found.");
-        return null;
-    }
-
-    newTrigger.remarks = data.remarks;
-    newTrigger.resolveTime = Date.now();
-    newTrigger.resolved = true;
-    triggers = triggers.map((trigger)=> trigger.id === data.id ? newTrigger : trigger);
-    try {
-        
-        await storage.setItem("triggers", triggers);
-        await createLog({type: `resolve`, description: `Trigger of zone: '${newTrigger.zone}', resolved.`});
-        return triggers;
-    } catch (error) {
-        console.log("Error resolving trigger: "+ error);
     }
     return null;
 }

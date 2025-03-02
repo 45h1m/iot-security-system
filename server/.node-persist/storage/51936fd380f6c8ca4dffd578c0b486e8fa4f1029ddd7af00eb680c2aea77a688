@@ -1,1 +1,1 @@
-{"key":"triggers","value":[]}
+{"key":"triggers","value":[{"id":"1740908642030","type":"panic","zone":"panic","resolved":true,"remarks":"gfdgfdg","triggerTime":1740908642030,"resolveTime":1740908675268},{"id":"1740908701448","type":"trigger","zone":"zone0","resolved":true,"remarks":"gfgfdggf","triggerTime":1740908701448,"resolveTime":1740908729661},{"id":"1740928411567","type":"trigger","zone":"zone1","resolved":true,"remarks":"Sourav dhuksil","triggerTime":1740928411567,"resolveTime":1740928530732}]}
