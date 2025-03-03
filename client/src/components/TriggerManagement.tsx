@@ -28,8 +28,8 @@ const TriggerManagement: React.FC = () => {
 
     const { lastMessage, isConnected } = useWebSocket();
 
-    const url = process.env.NODE_ENV || process.env.NODE_ENV === 'development'? 'http://localhost:80' : `https://${window.location.host}` || `https://${window.location.hostname}`;
-
+    // const url ='http://localhost:80';
+    const url = `https://${window.location.host}` || `https://${window.location.hostname}`;
 
     useEffect(() => {
         if (lastMessage && lastMessage.newLog) {

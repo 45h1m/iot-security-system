@@ -10,7 +10,8 @@ const App: React.FC = () => {
     const [zones, setZones]: any = useState({});
     const { lastMessage, isConnected, connectionError } = useWebSocket();
 
-    const url = process.env.NODE_ENV || process.env.NODE_ENV === 'development'? 'http://localhost:80' : `https://${window.location.host}` || `https://${window.location.hostname}`;
+    // const url ='http://localhost:80'; 
+    const url = `https://${window.location.host}` || `https://${window.location.hostname}`;
 
     useEffect(() => {
         getZones();
