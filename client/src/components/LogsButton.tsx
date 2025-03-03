@@ -28,6 +28,9 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
     const [newLog, setNewLog] = useState<boolean>(false);
     const { lastMessage, isConnected } = useWebSocket();
 
+    // const url ='http://localhost:80';
+    const url = `https://${window.location.host}` || `https://${window.location.hostname}`;
+
     useEffect(() => {
         if (lastMessage && lastMessage.newLog) {
             fetchLogs();
@@ -47,7 +50,7 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
         setError(null);
 
         try {
-            const response = await axios.get("http://localhost:80/api/logs");
+            const response = await axios.get(`${url}/api/logs`);
             setLogs(response.data.data);
             console.log(response.data);
             setFilteredLogs(response.data.data);
