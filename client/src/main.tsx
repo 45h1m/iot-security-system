@@ -4,9 +4,11 @@ import "./index.css";
 import App from "./App.tsx";
 import { WebSocketProvider } from "./contexts/WebSocketContext.tsx";
 
+const websocketURL = process.env.NODE_ENV || process.env.NODE_ENV === 'development'? 'ws://localhost:80' : `wss://${window.location.host}:443` || `wss://${window.location.hostname}:443`;
+
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
-        <WebSocketProvider url="ws://localhost:80">
+        <WebSocketProvider url={websocketURL}>
             <App />
         </WebSocketProvider>
     </StrictMode>
