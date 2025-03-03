@@ -4,7 +4,7 @@
   "description": "security app, using NCNO sensors",
   "main": "server.js",
   "scripts": {
-    "postinstall": "cd ../client && npm install && npm run build",
+    "setup": "npm install && cd ../client && npm install && npm run build && cd ../server && npm install",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon server.js",
     "start": "node server.js"
