@@ -1,4 +1,4 @@
-import React, { use, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useWebSocket } from "./contexts/WebSocketContext";
 import Header from "./components/Header";
 import axios from "axios";
@@ -6,25 +6,26 @@ import ZoneCard from "./components/ZoneCard";
 import TriggerManagement from "./components/TriggerManagement";
 
 const App: React.FC = () => {
-    const [message, setMessage] = useState("");
+    // const [message, setMessage] = useState("");
     const [zones, setZones]: any = useState({});
-    const [sortedZones, setSortedZones]: any = useState({});
-    const { sendMessage, lastMessage, isConnected, connectionError } = useWebSocket();
+    const { lastMessage, isConnected, connectionError } = useWebSocket();
+
+    const url = process.env.NODE_ENV || process.env.NODE_ENV === 'development'? 'http://localhost:80' : `https://${window.location.host}` || `https://${window.location.hostname}`;
 
     useEffect(() => {
         getZones();
     }, [lastMessage, isConnected]);
 
-    const handleSend = () => {
-        if (message.trim()) {
-            sendMessage({ type: "chat", content: message });
-            setMessage("");
-        }
-    };
+    // const handleSend = () => {
+    //     if (message.trim()) {
+    //         sendMessage({ type: "chat", content: message });
+    //         setMessage("");
+    //     }
+    // };
 
     async function getZones() {
         try {
-            const res = await axios.get("http://localhost:80/api/zones");
+            const res = await axios.get(`${url}/api/zones`);
             if (res.data.success && res.data.data) {
                 setZones(res.data.data);
                 console.log(res.data.data);
@@ -39,7 +40,7 @@ const App: React.FC = () => {
 
     const handleSaveZone = async (updatedZone: any, zoneKey: any) => {
         try {
-            const res = await axios.post(`http://localhost:80/api/zones`, { ...updatedZone, id: zoneKey });
+            const res = await axios.post(`${url}/api/zones`, { ...updatedZone, id: zoneKey });
             if (res.data.error) {
                 console.log(res.data.error);
             }
@@ -57,23 +58,40 @@ const App: React.FC = () => {
 
     return (
         <div>
-            <Header isConnected={isConnected} logCount={27} />
-            <TriggerManagement />
-            <h2 className="text-2xl font-bold mb-4 text-white max-w-5xl mx-auto pl-4 mt-4">Zones</h2>
-            <div className="flex flex-wrap gap-2 px-4 max-w-5xl mx-auto">
-                {Object.keys(zones).map((zoneKey) => {
-                    if (zones[zoneKey].enabled)
-                        return <ZoneCard key={zoneKey} zone={zones[zoneKey]} onSave={(updatedZone: any) => handleSaveZone(updatedZone, zoneKey)} />;
-                    return null;
-                })}
-            </div>
-            <h3 className="text-sm mb-4 text-white max-w-5xl mx-auto pl-4 mt-4">Disabled</h3>
-            <div className="flex flex-wrap gap-2 px-4 max-w-5xl mx-auto">
-                {Object.keys(zones).map((zoneKey) => {
-                    if (!zones[zoneKey].enabled)
-                        return <ZoneCard key={zoneKey} zone={zones[zoneKey]} onSave={(updatedZone: any) => handleSaveZone(updatedZone, zoneKey)} />;
-                    return null;
-                })}
+            <Header isConnected={isConnected} />
+            {connectionError && !isConnected && <p className="w-full text-center bg-red-800 font-semibold tracking-wide text-sm text-red-200">{connectionError}, reload.</p>}
+            <div className={`${!isConnected && "opacity-50 pointer-events-none"}`}>
+                <TriggerManagement />
+                {Object.keys(zones).length > 0 && <div>
+                    <h2 className="text-2xl font-bold mb-4 text-white max-w-5xl mx-auto pl-4 mt-4">Zones</h2>
+                    <div className="flex flex-wrap gap-2 px-4 max-w-5xl mx-auto">
+                        {Object.keys(zones).map((zoneKey) => {
+                            if (zones[zoneKey].enabled)
+                                return (
+                                    <ZoneCard
+                                        key={zoneKey}
+                                        zone={zones[zoneKey]}
+                                        onSave={(updatedZone: any) => handleSaveZone(updatedZone, zoneKey)}
+                                    />
+                                );
+                            return null;
+                        })}
+                    </div>
+                    <h3 className="text-sm mb-4 text-white max-w-5xl mx-auto pl-4 mt-4">Disabled</h3>
+                    <div className="flex flex-wrap gap-2 px-4 max-w-5xl mx-auto">
+                        {Object.keys(zones).map((zoneKey) => {
+                            if (!zones[zoneKey].enabled)
+                                return (
+                                    <ZoneCard
+                                        key={zoneKey}
+                                        zone={zones[zoneKey]}
+                                        onSave={(updatedZone: any) => handleSaveZone(updatedZone, zoneKey)}
+                                    />
+                                );
+                            return null;
+                        })}
+                    </div>
+                </div>}
             </div>
         </div>
     );

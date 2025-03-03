@@ -29,18 +29,17 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
     const { lastMessage, isConnected } = useWebSocket();
 
     useEffect(() => {
-
-        if(lastMessage && lastMessage.newLog) {
+        if (lastMessage && lastMessage.newLog) {
             fetchLogs();
-            if(!isOpen) {
+            if (!isOpen) {
                 setNewLog(true);
             }
         }
     }, [lastMessage]);
 
-    useEffect(()=>{
+    useEffect(() => {
         fetchLogs();
-    },[isConnected])
+    }, [isConnected]);
 
     // Fetch logs from API
     const fetchLogs = async () => {
@@ -94,9 +93,9 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
         }
     }, [filterText, filterLevel, logs]);
 
-    useEffect(()=>{
+    useEffect(() => {
         fetchLogs();
-    },[])
+    }, []);
 
     return (
         <div className="relative bg-slate-800">
@@ -111,89 +110,97 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
 
             {/* Logs panel */}
             {isOpen && (
-                <div className="fixed z-10 right-0 mt-2 w-full sm:w-96 md:w-128 bg-slate-800 rounded-md shadow-lg border border-slate-700 max-h-96 overflow-hidden flex flex-col">
-                    <div className="p-4 border-b border-slate-700 bg-slate-800 flex flex-col">
-                        <div className="text-lg font-medium mb-3">Logs</div>
+                <div className="fixed px-2 z-10 right-0 w-full mt-2 max-w-xl">
+                    <div className="bg-slate-800 rounded-md shadow-lg border border-slate-700 flex flex-col max-h-[70vh] ">
+                        <div className="p-4 border-b border-slate-700 bg-slate-800 flex flex-col">
+                            <div className="text-lg font-medium mb-3">Logs</div>
 
-                        {/* Filters */}
-                        <div className="flex flex-col sm:flex-row gap-2">
-                            <input
-                                type="text"
-                                placeholder="Filter logs..."
-                                className="flex-grow px-3 py-2 border border-slate-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                value={filterText}
-                                onChange={(e) => setFilterText(e.target.value)}
-                            />
+                            {/* Filters */}
+                            <div className="flex flex-col sm:flex-row gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Filter logs..."
+                                    className="flex-grow px-3 py-2 border border-slate-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={filterText}
+                                    onChange={(e) => setFilterText(e.target.value)}
+                                />
 
-                            <select
-                                className="bg-slate-800 px-3 py-2 border border-slate-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                value={filterLevel}
-                                onChange={(e) => setFilterLevel(e.target.value)}
-                            >
-                                <option value="all">All</option>
-                                <option value="panic">Panic</option>
-                                <option value="trigger">Trigger</option>
-                                <option value="armed">Armed</option>
-                                <option value="disarmed">Disarmed</option>
-                            </select>
+                                <select
+                                    className="bg-slate-800 px-3 py-2 border border-slate-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={filterLevel}
+                                    onChange={(e) => setFilterLevel(e.target.value)}
+                                >
+                                    <option value="all">All</option>
+                                    <option value="panic">Panic</option>
+                                    <option value="trigger">Trigger</option>
+                                    <option value="armed">Armed</option>
+                                    <option value="disarmed">Disarmed</option>
+                                </select>
 
-                            <button
-                                className="px-3 py-2 bg-gray-600 hover:bg-gray-700 rounded-md text-sm transition-colors"
-                                onClick={() => fetchLogs()}
-                            >
-                                Refresh
+                                <button
+                                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 rounded-md text-sm transition-colors"
+                                    onClick={() => fetchLogs()}
+                                >
+                                    Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Logs content */}
+                        <div className="overflow-y-auto flex-grow">
+                            {loading ? (
+                                <div className="p-4 text-center text-gray-500">Loading logs...</div>
+                            ) : error ? (
+                                <div className="p-4 text-center text-red-500">{error}</div>
+                            ) : filteredLogs.length === 0 ? (
+                                <div className="p-4 text-center text-gray-500">
+                                    {logs.length === 0 ? "No logs available" : "No logs match your filters"}
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-gray-700">
+                                    {filteredLogs.map((log) => (
+                                        <div key={log.id} className={`p-3 hover:bg-gray-800 ${
+                                            log.type === "trigger" || log.type === "panic"
+                                                ? "bg-red-900/20 text-red-200"
+                                                : log.type === "armed"
+                                                ? "bg-yellow-900/20 text-yellow-100"
+                                                : "bg-blue-900/10 text-blue-100"
+                                        }`}>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-xs text-gray-500">{new Date(log.date).toLocaleString()}</span>
+                                                <span
+                                                    className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                                        log.type === "trigger" || log.type === "panic"
+                                                            ? "bg-red-800 text-red-200"
+                                                            : log.type === "armed"
+                                                            ? "bg-yellow-100 text-yellow-800"
+                                                            : "bg-blue-100 text-blue-800"
+                                                    }`}
+                                                >
+                                                    {log.type}
+                                                </span>
+                                            </div>
+                                            <div className="text-sm">{log.description}</div>
+                                            {log.details && (
+                                                <div className="mt-1 text-xs text-gray-600 bg-gray-600 p-2 rounded-md overflow-x-auto">
+                                                    <pre>{JSON.stringify(log.details, null, 2)}</pre>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Panel footer */}
+                        <div className="p-3 border-t border-slate-700 bg-gray-800 flex justify-between items-center text-sm">
+                            <span className="text-gray-500">
+                                {filteredLogs.length} of {logs.length || 0} logs
+                            </span>
+                            <button className="text-blue-600 hover:text-blue-800" onClick={() => setIsOpen(false)}>
+                                Close
                             </button>
                         </div>
-                    </div>
-
-                    {/* Logs content */}
-                    <div className="overflow-y-auto flex-grow">
-                        {loading ? (
-                            <div className="p-4 text-center text-gray-500">Loading logs...</div>
-                        ) : error ? (
-                            <div className="p-4 text-center text-red-500">{error}</div>
-                        ) : filteredLogs.length === 0 ? (
-                            <div className="p-4 text-center text-gray-500">
-                                {logs.length === 0 ? "No logs available" : "No logs match your filters"}
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-gray-700">
-                                {filteredLogs.map((log) => (
-                                    <div key={log.id} className="p-3 hover:bg-gray-700">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-xs text-gray-500">{new Date(log.date).toLocaleString()}</span>
-                                            <span
-                                                className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                                    log.type === "trigger" || log.type === "panic"
-                                                        ? "bg-red-800 text-red-200"
-                                                        : log.type === "armed"
-                                                        ? "bg-yellow-100 text-yellow-800"
-                                                        : "bg-blue-100 text-blue-800"
-                                                }`}
-                                            >
-                                                {log.type}
-                                            </span>
-                                        </div>
-                                        <div className="text-sm">{log.description}</div>
-                                        {log.details && (
-                                            <div className="mt-1 text-xs text-gray-600 bg-gray-600 p-2 rounded-md overflow-x-auto">
-                                                <pre>{JSON.stringify(log.details, null, 2)}</pre>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Panel footer */}
-                    <div className="p-3 border-t border-slate-700 bg-gray-800 flex justify-between items-center text-sm">
-                        <span className="text-gray-500">
-                            {filteredLogs.length} of {logs.length || 0} logs
-                        </span>
-                        <button className="text-blue-600 hover:text-blue-800" onClick={() => setIsOpen(false)}>
-                            Close
-                        </button>
                     </div>
                 </div>
             )}

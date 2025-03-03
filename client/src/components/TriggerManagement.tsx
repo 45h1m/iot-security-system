@@ -28,6 +28,9 @@ const TriggerManagement: React.FC = () => {
 
     const { lastMessage, isConnected } = useWebSocket();
 
+    const url = process.env.NODE_ENV || process.env.NODE_ENV === 'development'? 'http://localhost:80' : `https://${window.location.host}` || `https://${window.location.hostname}`;
+
+
     useEffect(() => {
         if (lastMessage && lastMessage.newLog) {
             fetchTriggers();
@@ -37,7 +40,7 @@ const TriggerManagement: React.FC = () => {
     const fetchTriggers = async () => {
         try {
             // Replace this with your actual method to get triggers
-            const res = await axios.get("http://localhost:80/api/triggers");
+            const res = await axios.get(`${url}/api/triggers`);
             if (!res.data.success) {
                 console.log(res.data.error);
                 return;
@@ -85,7 +88,7 @@ const TriggerManagement: React.FC = () => {
         };
 
         try {
-            const res = await axios.post("http://localhost:80/api/resolveTrigger", resolveData);
+            const res = await axios.post(`${url}/api/resolveTrigger`, resolveData);
             if (!res.data.success) {
                 console.log(res.data.error);
                 return;
@@ -202,7 +205,7 @@ const TriggerManagement: React.FC = () => {
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-green-300">
-                                            {trigger.remarks || "No remarks."}
+                                            {trigger.remarks || "Please resolve first."}
                                         </td>
                                     </tr>
                                 ))
@@ -214,7 +217,7 @@ const TriggerManagement: React.FC = () => {
 
             {/* Full Screen Resolve Trigger Form */}
             {selectedTriggerId && (
-                <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black bg-opacity-70 px-4 flex items-center justify-center z-50">
                     <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-2xl border border-gray-600">
                         <h2 className="text-xl font-semibold mb-4 text-white">Resolve Trigger</h2>
                         <p className="mb-4 text-gray-300">

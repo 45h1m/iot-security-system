@@ -5,6 +5,7 @@ const mqtt = require("mqtt");
 require("dotenv").config();
 const { initStorage } = require("./controllers/storage");
 const WebSocket = require("./shared/shared");
+const path = require("path");
 
 const APIRouter = require("./routes/apiRouter");
 const { mqttHandler } = require("./controllers/mqttHandler");
@@ -19,6 +20,9 @@ app.use(cors());
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
 
 // Create WebSocket server
 
@@ -78,16 +82,8 @@ mqttClient.on("message", (topic, message) => {
 
 app.use("/api", APIRouter);
 
-// Routes
-app.get("/", (req, res) => {
-    res.json({ message: "Welcome to the Express.js API!" });
-});
-
-app.get("/api/items/:id", (req, res) => {
-    res.json({
-        message: "Item retrieved",
-        id: req.params.id,
-    });
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
 });
 
 // Error handling middleware

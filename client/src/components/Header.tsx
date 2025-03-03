@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Activity, List, Wifi, WifiOff } from 'lucide-react';
+import { Wifi, WifiOff } from 'lucide-react';
 import LogsButton from './LogsButton';
 
-const Header = ({ isConnected = false, logCount = 0 }) => {
+const Header = ({ isConnected = false}) => {
   
   return (
     <header className="sticky top-0 bg-slate-800 text-white p-4 shadow-md border-b border-slate-700">
@@ -12,7 +11,7 @@ const Header = ({ isConnected = false, logCount = 0 }) => {
           <img className='w-25' src="/sense-25.png" alt="text-logo" />
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <div className="flex items-center space-x-2">
             <LogsButton/>
           </div>

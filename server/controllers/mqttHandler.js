@@ -45,7 +45,7 @@ async function handleTrigger(data) {
     if (!data.zone) return;
     const triggers = getTriggers();
     if (triggers && triggers.length > 0) {
-        const triggerExists = triggers.some((trigger, index) => trigger.zone === data.zone);
+        const triggerExists = triggers.some((trigger, index) => trigger.zone === data.zone && trigger.resolved === false);
         if (triggerExists) {
             console.log("trigger already exists");
             return;

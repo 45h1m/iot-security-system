@@ -4,8 +4,10 @@
   "description": "security app, using NCNO sensors",
   "main": "server.js",
   "scripts": {
+    "postinstall": "cd ../client && npm install && npm run build",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "start": "node server.js"
   },
   "keywords": [
     "security",
