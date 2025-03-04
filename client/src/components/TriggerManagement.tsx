@@ -1,7 +1,9 @@
 import axios from "axios";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useWebSocket } from "../contexts/WebSocketContext";
 import { changeTitleAndFavicon } from "../utils/changeTitleIcon";
+
+const apiURL = import.meta.env.VITE_API_URL || "http://localhost:80";
 
 // Define TypeScript interfaces
 interface Trigger {
@@ -19,6 +21,10 @@ interface ResolveData {
     remarks: string;
 }
 
+const sound = new Audio();
+sound.src = '/siren.mp3';
+sound.loop = true;
+
 const TriggerManagement: React.FC = () => {
     const [triggers, setTriggers] = useState<Trigger[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -26,10 +32,9 @@ const TriggerManagement: React.FC = () => {
     const [remarks, setRemarks] = useState<string>("");
     const [filter, setFilter] = useState<"all" | "resolved" | "unresolved">("all");
 
-    const { lastMessage, isConnected } = useWebSocket();
+    const tableBody = useRef <HTMLTableSectionElement>(null);
 
-    // const url ='http://localhost:80';
-    const url = `https://${window.location.host}` || `https://${window.location.hostname}`;
+    const { lastMessage, isConnected } = useWebSocket();
 
     useEffect(() => {
         if (lastMessage && lastMessage.newLog) {
@@ -37,10 +42,24 @@ const TriggerManagement: React.FC = () => {
         }
     }, [lastMessage, isConnected]);
 
+    function scrollToLastRow() {
+        if(tableBody.current){
+            const lastRow = tableBody.current.lastElementChild;
+            lastRow?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            })
+        }
+    }
+
+    useEffect(()=>{
+        scrollToLastRow();
+    },[triggers]);
+
     const fetchTriggers = async () => {
         try {
             // Replace this with your actual method to get triggers
-            const res = await axios.get(`${url}/api/triggers`);
+            const res = await axios.get(`${apiURL}/api/triggers`);
             if (!res.data.success) {
                 console.log(res.data.error);
                 return;
@@ -49,9 +68,17 @@ const TriggerManagement: React.FC = () => {
             setTriggers(res.data.data);
             if (res.data.data.some((trigger: any) => !trigger.resolved)) {
                 changeTitleAndFavicon("⚠ Triggered", "");
+                if(sound.paused)sound.play();
+                if(navigator.vibrate) navigator.vibrate([
+                    100, 30, 100, 30, 100, 30, 200, 30, 200, 30, 200, 30, 100, 30, 100, 30, 100,
+                  ]);
             } else {
+                if(!sound.paused)
+                    sound.pause();
                 changeTitleAndFavicon("✅ No Issues", "");
+                
             }
+
         } catch (error) {
             console.error("Error fetching triggers:", error);
         } finally {
@@ -88,7 +115,7 @@ const TriggerManagement: React.FC = () => {
         };
 
         try {
-            const res = await axios.post(`${url}/api/resolveTrigger`, resolveData);
+            const res = await axios.post(`${apiURL}/api/resolveTrigger`, resolveData);
             if (!res.data.success) {
                 console.log(res.data.error);
                 return;
@@ -117,7 +144,7 @@ const TriggerManagement: React.FC = () => {
     }
 
     return (
-        <div className="py-4 max-w-5xl mx-auto text-gray-200">
+        <div className="py-4 max-w-6xl mx-auto text-gray-200">
             <h1 className="text-2xl font-bold mb-4 text-white px-4">Triggers</h1>
 
             {/* Filter Controls */}
@@ -133,7 +160,7 @@ const TriggerManagement: React.FC = () => {
                 <button
                     className={`text-sm px-2 py-1 rounded ${
                         filter === "unresolved" ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                    } ${triggers.some((trigger) => !trigger.resolved) && "ring-2 ring-red-500"}`}
+                    } ${triggers.some((trigger) => !trigger.resolved) && "border-b-2 border-red-500"}`}
                     onClick={() => setFilter("unresolved")}
                 >
                     Unresolved
@@ -150,10 +177,10 @@ const TriggerManagement: React.FC = () => {
 
             {/* Triggers Table */}
             <div className="px-2">
-                <div className="overflow-x-auto border border-gray-700 rounded">
+                <div className="overflow-x-auto border border-gray-700 rounded max-h-[50vh]">
                     <table className="min-w-full divide-y divide-gray-700">
-                        <thead className="bg-gray-800">
-                            <tr>
+                        <thead className="sticky top-0 bg-gray-800">
+                            <tr className="">
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Type</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Zone</th>
@@ -163,7 +190,7 @@ const TriggerManagement: React.FC = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Remarks</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-gray-800 divide-y divide-gray-700">
+                        <tbody ref={tableBody} className="bg-gray-800 divide-y divide-gray-700">
                             {filteredTriggers.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-4 text-center text-gray-400">
@@ -172,7 +199,7 @@ const TriggerManagement: React.FC = () => {
                                 </tr>
                             ) : (
                                 filteredTriggers.map((trigger) => (
-                                    <tr key={trigger.id} className={trigger.resolved ? "bg-green-900/30" : "bg-red-900/30"}>
+                                    <tr key={trigger.id} className={trigger.resolved ? "bg-green-900/30" : "bg-red-900/30 animate-alert"}>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{trigger.id}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-200">{trigger.type}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-200">{trigger.zone}</td>
@@ -189,7 +216,7 @@ const TriggerManagement: React.FC = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             {!trigger.resolved && (
                                                 <button
-                                                    className="text-blue-400 hover:text-blue-300"
+                                                    className="sticky text-red-200 bg-red-900 border-2 border-red-700 font-bold px-2 py-1 rounded-sm hover:text-white cursor-pointer"
                                                     onClick={() => {
                                                         setSelectedTriggerId(trigger.id);
                                                         setRemarks("");
@@ -204,8 +231,8 @@ const TriggerManagement: React.FC = () => {
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-green-300">
-                                            {trigger.remarks || "Please resolve first."}
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-red-300">
+                                            {trigger.remarks || "Trigger unresolved!"}
                                         </td>
                                     </tr>
                                 ))

@@ -86,7 +86,7 @@ const ZoneCard = ({ zone, onSave }: any) => {
                         </div>
                     </div>
 
-                    {zone.triggered && <div className="mt-2 py-0.5 px-2 bg-red-900 text-red-100 text-xs font-medium rounded text-center">ALERT</div>}
+                    {zone.triggered && <div className="mt-2 py-0.5 px-2 bg-red-900 text-red-100 text-xs font-medium rounded text-center animate-alert">⚠ ALERT</div>}
                 </>
             ) : (
                 // Edit Mode - Dark Theme

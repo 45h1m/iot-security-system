@@ -28,8 +28,7 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
     const [newLog, setNewLog] = useState<boolean>(false);
     const { lastMessage, isConnected } = useWebSocket();
 
-    // const url ='http://localhost:80';
-    const url = `https://${window.location.host}` || `https://${window.location.hostname}`;
+    const apiURL = import.meta.env.VITE_API_URL || 'http://localhost:80';
 
     useEffect(() => {
         if (lastMessage && lastMessage.newLog) {
@@ -50,7 +49,7 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
         setError(null);
 
         try {
-            const response = await axios.get(`${url}/api/logs`);
+            const response = await axios.get(`${apiURL}/api/logs`);
             setLogs(response.data.data);
             console.log(response.data);
             setFilteredLogs(response.data.data);

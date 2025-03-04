@@ -13,8 +13,19 @@ body {
   animation: move-dots 5s linear infinite;
 }
 
+.animate-alert {
+  animation: alert-pulse 300ms ease-in-out infinite alternate;
+}
+
 @keyframes move-dots {
   to {
     background-position: 25px 0px;
+  }
+}
+
+@keyframes alert-pulse {
+  to {
+    filter: brightness(200%);
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
   }
 }
