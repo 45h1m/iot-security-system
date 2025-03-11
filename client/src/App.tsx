@@ -67,7 +67,7 @@ const App: React.FC = () => {
             {isConnected && <ArmDisarm />}
 
             <div className={`${!isConnected && "opacity-50 pointer-events-none"}`}>
-                <div className="max-w-6xl mx-auto pl-4">
+                <div className="max-w-6xl mx-auto pl-4 mt-4">
 
                 <button
                     className="flex gap-2 items-center text-sm mb-4 bg-slate-800 text-white px-2 py-2 rounded-md hover:bg-slate-700 cursor-pointer"

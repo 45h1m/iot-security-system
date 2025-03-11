@@ -142,7 +142,7 @@ const TriggerManagement: React.FC = () => {
     }
 
     return (
-        <div className="py-4 max-w-6xl mx-auto text-gray-200">
+        <div className="max-w-6xl mx-auto text-gray-200">
             <h1 className="text-2xl font-bold mb-4 text-white px-4">Triggers</h1>
 
             {/* Filter Controls */}
