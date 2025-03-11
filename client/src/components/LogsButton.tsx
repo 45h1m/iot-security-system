@@ -105,7 +105,7 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
             {/* Button showing number of logs */}
             <button
                 onClick={togglePanel}
-                className={`whitespace-nowrap flex items-center cursor-pointer text-white font-medium py-1 px-2 rounded-md transition-colors ${className}`}
+                className={`relative whitespace-nowrap flex items-center cursor-pointer text-white font-medium py-1 px-2 rounded-md transition-colors ${className}`}
             >
                 Logs {logs.length > 0 ? `(${logs.length})` : "0"}
                 {logs.length > 0 && newLog && <span className="absolute top-0 right-0 size-2 bg-red-500 rounded-full"></span>}
