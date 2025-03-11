@@ -4,6 +4,7 @@ import Header from "./components/Header";
 import axios from "axios";
 import ZoneCard from "./components/ZoneCard";
 import TriggerManagement from "./components/TriggerManagement";
+import ArmDisarm from "./components/ArmDisarm";
 const  apiURL = import.meta.env.VITE_API_URL;
 
 const App: React.FC = () => {
@@ -60,6 +61,7 @@ const App: React.FC = () => {
         <div className="relative">
             <Header isConnected={isConnected} />
             {connectionError && !isConnected && <p className="w-full text-center bg-red-800 font-semibold tracking-wide text-sm text-red-200">{connectionError}, reload.</p>}
+            {isConnected && <ArmDisarm/>}
             <div className={`${!isConnected && "opacity-50 pointer-events-none"}`}>
                 <TriggerManagement />
                 {Object.keys(zones).length > 0 && <div>

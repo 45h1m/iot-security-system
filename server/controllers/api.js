@@ -1,5 +1,5 @@
 const { data } = require("node-persist");
-const { getZones, updateZone, getTriggers, getLogs, resolveTrigger } = require("./storage");
+const { getZones, updateZone, getTriggers, getLogs, resolveTrigger, setSystemState } = require("./storage");
 const { clients, WebSocket } = require("../shared/shared");
 
 async function handleGetZones(req, res) {
@@ -120,4 +120,22 @@ function handleGetLogs(req, res) {
     });
 }
 
-module.exports = { handleGetZones, handleUpdateZone, handleGetTriggers, handleResolveTrigger, handleGetLogs };
+async function handleArmDisarm(req, res) {
+    const { state } = req.body;
+    if (!state)
+        return res.status(400).json({
+            success: false,
+            error: "All fields (state) are required.",
+        });
+
+    const currentState = await setSystemState(req.body.state);
+    if(currentState) {
+        return res.status(200).json({
+            success: true,
+            message: "System state set to: " + currentState,
+            data: currentState,
+        });
+    }
+}
+
+module.exports = { handleGetZones, handleUpdateZone, handleGetTriggers, handleResolveTrigger, handleGetLogs, handleArmDisarm };

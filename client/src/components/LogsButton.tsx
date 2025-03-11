@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useWebSocket } from "../contexts/WebSocketContext";
+import exportLogsToExcel from "../utils/exportToXLS";
 
 // Define the Log interface
-interface Log {
+export interface Log {
     id: string;
     date: string;
     type: "trigger" | "panic" | "armed" | "disarmed" | "resolve";
@@ -28,7 +29,7 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
     const [newLog, setNewLog] = useState<boolean>(false);
     const { lastMessage, isConnected } = useWebSocket();
 
-    const apiURL = import.meta.env.VITE_API_URL || 'http://localhost:80';
+    const apiURL = import.meta.env.VITE_API_URL || "http://localhost:80";
 
     useEffect(() => {
         if (lastMessage && lastMessage.newLog) {
@@ -100,11 +101,11 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
     }, []);
 
     return (
-        <div className="relative bg-slate-800">
+        <div className="z-40 bg-slate-800">
             {/* Button showing number of logs */}
             <button
                 onClick={togglePanel}
-                className={`relative whitespace-nowrap flex items-center cursor-pointer text-white font-medium py-1 px-2 rounded-md transition-colors ${className}`}
+                className={`whitespace-nowrap flex items-center cursor-pointer text-white font-medium py-1 px-2 rounded-md transition-colors ${className}`}
             >
                 Logs {logs.length > 0 ? `(${logs.length})` : "0"}
                 {logs.length > 0 && newLog && <span className="absolute top-0 right-0 size-2 bg-red-500 rounded-full"></span>}
@@ -112,7 +113,7 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
 
             {/* Logs panel */}
             {isOpen && (
-                <div className="fixed px-2 z-10 right-0 w-full mt-2 max-w-xl">
+                <div className="fixed px-2 z-100 top-40 right-0 w-full mt-2 max-w-xl">
                     <div className="bg-slate-800 rounded-md shadow-lg border border-slate-700 flex flex-col max-h-[70vh] ">
                         <div className="p-4 border-b border-slate-700 bg-slate-800 flex flex-col">
                             <div className="text-lg font-medium mb-3">Logs</div>
@@ -161,13 +162,16 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
                             ) : (
                                 <div className="divide-y divide-gray-700">
                                     {filteredLogs.map((log) => (
-                                        <div key={log.id} className={`p-3 hover:bg-gray-800 ${
-                                            log.type === "trigger" || log.type === "panic"
-                                                ? "bg-red-900/20 text-red-200"
-                                                : log.type === "armed"
-                                                ? "bg-yellow-900/20 text-yellow-100"
-                                                : "bg-blue-900/10 text-blue-100"
-                                        }`}>
+                                        <div
+                                            key={log.id}
+                                            className={`p-3 hover:bg-gray-800 ${
+                                                log.type === "trigger" || log.type === "panic"
+                                                    ? "bg-red-900/20 text-red-200"
+                                                    : log.type === "armed"
+                                                    ? "bg-yellow-900/20 text-yellow-100"
+                                                    : "bg-blue-900/10 text-blue-100"
+                                            }`}
+                                        >
                                             <div className="flex items-center justify-between mb-1">
                                                 <span className="text-xs text-gray-500">{new Date(log.date).toLocaleString()}</span>
                                                 <span
@@ -194,12 +198,14 @@ const LogsButton: React.FC<LogsButtonProps> = ({ className = "" }) => {
                             )}
                         </div>
 
-                        {/* Panel footer */}
                         <div className="p-3 border-t border-slate-700 bg-gray-800 flex justify-between items-center text-sm">
-                            <span className="text-gray-500">
-                                {filteredLogs.length} of {logs.length || 0} logs
-                            </span>
-                            <button className="text-blue-600 hover:text-blue-800" onClick={() => setIsOpen(false)}>
+                            <div className="flex gap-2 items-center">
+                                <span className="text-gray-500">
+                                    {filteredLogs.length} of {logs.length || 0} logs
+                                </span>
+                                <button className="border-2 rounded-sm px-2 py-1 text-slate-300 hover:text-blue-500 cursor-pointer" onClick={() => exportLogsToExcel(logs)}>Export</button>
+                            </div>
+                            <button className="text-blue hover:text-blue-800" onClick={() => setIsOpen(false)}>
                                 Close
                             </button>
                         </div>

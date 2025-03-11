@@ -2,6 +2,7 @@ import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
 import { useWebSocket } from "../contexts/WebSocketContext";
 import { changeTitleAndFavicon } from "../utils/changeTitleIcon";
+import { useAudio } from "../contexts/AudioContext";
 
 const apiURL = import.meta.env.VITE_API_URL || "http://localhost:80";
 
@@ -22,7 +23,7 @@ interface ResolveData {
 }
 
 const sound = new Audio();
-sound.src = '/siren.mp3';
+sound.src = "/siren.mp3";
 sound.loop = true;
 
 const TriggerManagement: React.FC = () => {
@@ -32,9 +33,11 @@ const TriggerManagement: React.FC = () => {
     const [remarks, setRemarks] = useState<string>("");
     const [filter, setFilter] = useState<"all" | "resolved" | "unresolved">("all");
 
-    const tableBody = useRef <HTMLTableSectionElement>(null);
+    const tableBody = useRef<HTMLTableSectionElement>(null);
 
     const { lastMessage, isConnected } = useWebSocket();
+
+    const { playAudio, pauseAudio } = useAudio();
 
     useEffect(() => {
         if (lastMessage && lastMessage.newLog) {
@@ -43,18 +46,18 @@ const TriggerManagement: React.FC = () => {
     }, [lastMessage, isConnected]);
 
     function scrollToLastRow() {
-        if(tableBody.current){
+        if (tableBody.current) {
             const lastRow = tableBody.current.lastElementChild;
             lastRow?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            })
+                behavior: "smooth",
+                block: "center",
+            });
         }
     }
 
-    useEffect(()=>{
+    useEffect(() => {
         scrollToLastRow();
-    },[triggers]);
+    }, [triggers]);
 
     const fetchTriggers = async () => {
         try {
@@ -68,17 +71,12 @@ const TriggerManagement: React.FC = () => {
             setTriggers(res.data.data);
             if (res.data.data.some((trigger: any) => !trigger.resolved)) {
                 changeTitleAndFavicon("⚠ Triggered", "");
-                if(sound.paused)sound.play();
-                if(navigator.vibrate) navigator.vibrate([
-                    100, 30, 100, 30, 100, 30, 200, 30, 200, 30, 200, 30, 100, 30, 100, 30, 100,
-                  ]);
+                playAudio("/siren.mp3");
+                // if(navigator) vibrate()
             } else {
-                if(!sound.paused)
-                    sound.pause();
+                pauseAudio();
                 changeTitleAndFavicon("✅ No Issues", "");
-                
             }
-
         } catch (error) {
             console.error("Error fetching triggers:", error);
         } finally {

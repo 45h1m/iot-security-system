@@ -7,14 +7,16 @@ let zones = [];
 let logs = [];
 let triggers = [];
 let relays = [];
+let systemState = null;
 
 async function initStorage() {
     try {
-        await storage.clear();
+        // await storage.clear();
 
         zones = await storage.getItem("zones");
         logs = await storage.getItem("logs");
         triggers = await storage.getItem("triggers");
+        systemState = await storage.getItem("systemState");
 
         if (!zones) {
             zones = getInitialZones();
@@ -36,6 +38,11 @@ async function initStorage() {
             await storage.setItem("relays", relays);
         }
 
+        if(!systemState) {
+            systemState = "disarmed";
+            await storage.setItem("systemState", systemState);
+        }
+
         console.log("Storage initialized..");
     } catch (error) {
         console.log("Error initializiing storage: " + error);
@@ -44,26 +51,50 @@ async function initStorage() {
 
 initStorage();
 
+async function setSystemState(state) {
+    if (!state) {
+        return;
+    }
+
+    if (state === "armed" || state === "disarmed" || state === "semi-armed") {
+        systemState = state;
+        try {
+            await storage.setItem("systemState", systemState);
+
+            console.log("System state set to: " + systemState);
+
+            return systemState;
+        } catch (error) {
+            console.log("Error setting system state: " + error);
+        }
+    }
+
+    return null;
+}
+
+function getSystemState() {
+    console.log("systemState: "+ systemState)
+    return systemState;
+}
+
 async function updateZone(zone) {
     if (!zone.id) {
         return null;
     }
 
-    if(zones[zone.id] === undefined) {
+    if (zones[zone.id] === undefined) {
         console.log("Zone does not exist.");
         return null;
     }
 
-    
     try {
         zones[zone.id].name = zone.name || zones[zone.id].name;
         zones[zone.id].description = zone.description || zones[zone.id].description;
         zones[zone.id].color = zone.color || zones[zone.id].color;
-        zones[zone.id].enabled = zone.enabled !== undefined? zone.enabled : zones[zone.id].enabled;
-        
+        zones[zone.id].enabled = zone.enabled !== undefined ? zone.enabled : zones[zone.id].enabled;
+
         await storage.setItem("zones", zones);
         return zones;
-
     } catch (error) {
         console.log("Error updating zone: " + error);
         return null;
@@ -93,12 +124,11 @@ async function setZones(newZones) {
 }
 
 async function createTrigger(trigger) {
-    if(!trigger.type || !trigger.zone ) {
-        console.log("failed to create trigger, name, description, zone are requiered.")
+    if (!trigger.type || !trigger.zone) {
+        console.log("failed to create trigger, name, description, zone are requiered.");
         return null;
     }
 
-    
     triggers.push({
         id: Date.now().toString(),
         type: trigger.type,
@@ -106,35 +136,34 @@ async function createTrigger(trigger) {
         resolved: false,
         remarks: null,
         triggerTime: Date.now(),
-        resolveTime: null
+        resolveTime: null,
     });
 
     try {
-        if(trigger.type === "trigger") {
+        if (trigger.type === "trigger") {
             zones[trigger.zone].triggered = true;
             zones[trigger.zone].lastTriggered = Date.now();
             await storage.setItem("zones", zones);
         }
-        
-        await storage.setItem("triggers", triggers);
-        await createLog({type: trigger.type, description: `Sensor of zone: '${trigger.zone}', triggered.`});
-        return triggers;
 
+        await storage.setItem("triggers", triggers);
+        await createLog({ type: trigger.type, description: `Sensor of zone: '${trigger.zone}', triggered.` });
+        return triggers;
     } catch (error) {
-        console.log("Error creating trigger: "+ error);
+        console.log("Error creating trigger: " + error);
     }
     return null;
 }
 
 async function resolveTrigger(data) {
-    if(!data.id || !data.remarks) {
-        console.log("failed to resolve trigger: id and remarks are required.")
+    if (!data.id || !data.remarks) {
+        console.log("failed to resolve trigger: id and remarks are required.");
         return null;
     }
 
     let newTrigger = triggers.find((trigger) => trigger.id === data.id && trigger.resolved === false);
 
-    if(!newTrigger){
+    if (!newTrigger) {
         console.log("failed to resolve trigger: trigger not found.");
         return null;
     }
@@ -142,46 +171,43 @@ async function resolveTrigger(data) {
     newTrigger.remarks = data.remarks;
     newTrigger.resolveTime = Date.now();
     newTrigger.resolved = true;
-    triggers = triggers.map((trigger)=> trigger.id === data.id ? newTrigger : trigger);
+    triggers = triggers.map((trigger) => (trigger.id === data.id ? newTrigger : trigger));
 
-    if(zones[newTrigger.zone])
-    zones[newTrigger.zone].triggered = false;
+    if (zones[newTrigger.zone]) zones[newTrigger.zone].triggered = false;
 
     try {
-        
         await storage.setItem("triggers", triggers);
         await storage.setItem("zones", zones);
-        await createLog({type: `resolve`, description: `Trigger of zone: '${newTrigger.zone}', resolved.`});
+        await createLog({ type: `resolve`, description: `Trigger of zone: '${newTrigger.zone}', resolved.` });
         return triggers;
     } catch (error) {
-        console.log("Error resolving trigger: "+ error);
+        console.log("Error resolving trigger: " + error);
     }
     return null;
 }
-
 
 function getTriggers() {
     return triggers;
 }
 
 async function createLog(log) {
-    if(!log.type || !log.description) {
+    if (!log.type || !log.description) {
         console.log("provide type and description at log");
         return null;
     }
 
     try {
         logs.push({
-            id: "log-"+Date.now().toString(),
+            id: "log-" + Date.now().toString(),
             type: log.type,
             description: log.description,
             date: Date.now(),
         });
 
-        await storage.setItem('logs', logs);
+        await storage.setItem("logs", logs);
         return logs;
     } catch (error) {
-        console.log("Error creating log: "+ error);
+        console.log("Error creating log: " + error);
     }
     return null;
 }
@@ -190,4 +216,16 @@ function getLogs() {
     return logs;
 }
 
-module.exports = { initStorage, updateZone, getZones, setZones, getTriggers, createTrigger, createLog, resolveTrigger, getLogs };
+module.exports = {
+    initStorage,
+    updateZone,
+    getZones,
+    setZones,
+    getTriggers,
+    createTrigger,
+    createLog,
+    resolveTrigger,
+    getLogs,
+    setSystemState,
+    getSystemState,
+};

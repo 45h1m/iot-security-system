@@ -13,7 +13,8 @@ const { mqttHandler } = require("./controllers/mqttHandler");
 const app = express();
 const port = process.env.PORT || 80;
 
-const {clients, wss}=require('./shared/shared')
+const {clients, wss}=require('./shared/shared');
+const { webSocketHandler } = require("./controllers/webSocketHandler");
 
 // Middleware
 app.use(cors());
@@ -23,23 +24,6 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
-
-// Create WebSocket server
-
-// WebSocket connection handling
-wss.on("connection", (ws) => {
-    clients.add(ws);
-    console.log("New client connected");
-
-    ws.on("close", () => {
-        clients.delete(ws);
-        console.log("Client disconnected");
-    });
-
-    ws.on("message", function message(data) {
-        console.log("received: %s", data);
-    });
-});
 
 const options = {
     host: process.env.MQTT_HOST || "",
@@ -80,6 +64,8 @@ mqttClient.on("message", (topic, message) => {
     });
 });
 
+wss.on("connection", webSocketHandler);
+
 app.use("/api", APIRouter);
 
 app.get('*', (req, res) => {
@@ -99,8 +85,6 @@ app.use((err, req, res, next) => {
 const server = app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
-
-initStorage();
 
 // Integrate WebSocket server with HTTP server
 server.on("upgrade", (request, socket, head) => {

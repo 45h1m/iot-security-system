@@ -1,5 +1,5 @@
 const { clients, WebSocket } = require("../shared/shared");
-const { setZoneData, getZones, setZones, getTriggers, createTrigger, createLog } = require("./storage");
+const { getZones, getTriggers, createTrigger, createLog, getSystemState, setSystemState } = require("./storage");
 async function handleSensorData(data) {
     clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
@@ -27,6 +27,15 @@ async function handlePanic(data) {
 }
 async function handleArmDisarm(data) {
     try {
+        if(!data.state) return;
+
+        const state = await setSystemState(data.state);
+
+        if (!state) {
+            console.log("something went wrong while setting system state. Data: "+ data);
+            return;
+        }
+
         const res = await createLog({ type: `${data.state}`, description: `Device ${data.state}.` });
         if (!res) {
             console.log("something went wrong while creating arm-disarm log.");
@@ -34,7 +43,10 @@ async function handleArmDisarm(data) {
         }
         clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({ newLog: data }));
+                client.send(JSON.stringify({ 
+                    newLog: data,
+                    systemState: state,
+                }));
             }
         });
     } catch (error) {
@@ -42,8 +54,20 @@ async function handleArmDisarm(data) {
     }
 }
 async function handleTrigger(data) {
+    console.log(data)
     if (!data.zone) return;
+
+    const systemState = getSystemState();
+
+    console.log(systemState)
+
+    if (systemState.toUpperCase() === "DISARMED") {
+        console.log(`${data.zone} triggered but system is disarmed.`);
+        return;
+    }
+
     const triggers = getTriggers();
+
     if (triggers && triggers.length > 0) {
         const triggerExists = triggers.some((trigger, index) => trigger.zone === data.zone && trigger.resolved === false);
         if (triggerExists) {
@@ -75,9 +99,10 @@ async function handleTrigger(data) {
 
 async function mqttHandler(topic, data) {
     console.log(`Received MQTT message on topic ${topic}: ${data.toString()}`);
-
+    console.log(typeof data)
     try {
-        data = JSON.parse(data.toString());
+        if(Buffer.isBuffer(data)) data = JSON.parse(data.toString());
+        if(typeof data === "string") data = JSON.parse(data);
     } catch (error) {
         console.log("failed mqttHandler: " + error);
         return;
