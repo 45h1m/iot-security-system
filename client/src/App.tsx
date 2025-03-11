@@ -12,7 +12,7 @@ const App: React.FC = () => {
     // const [message, setMessage] = useState("");
     const [zones, setZones]: any = useState({});
     const { lastMessage, isConnected, connectionError } = useWebSocket();
-    const [zoneShown, setZoneShown] = useState(true);
+    const [zoneShown, setZoneShown] = useState(false);
 
     useEffect(() => {
         getZones();
@@ -79,10 +79,10 @@ const App: React.FC = () => {
                     </div>
                 <TriggerManagement />
                 {zoneShown && (
-                    <div className="fixed top-30 backdrop-blur-sm inset-0 overflow-y-auto pb-10">
+                    <div className="fixed top-30 py-20 backdrop-blur-sm inset-0 overflow-y-auto">
                         {Object.keys(zones).length > 0 && (
                             <div>
-                                <div className="max-w-5xl mx-auto pl-4 mt-4 flex justify-between">
+                                <div className="max-w-5xl mx-auto px-4 mt-4 flex justify-between">
                                     <h2 className="text-2xl font-bold mb-4 text-white">Zones</h2>
                                     <button
                                         className="flex gap-2 items-center text-sm mb-4 bg-slate-800 text-white px-2 py-2 rounded-md hover:bg-slate-700 cursor-pointer"
