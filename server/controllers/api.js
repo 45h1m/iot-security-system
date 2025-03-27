@@ -1,6 +1,6 @@
 const { data } = require("node-persist");
 const { getZones, updateZone, getTriggers, getLogs, resolveTrigger, setSystemState } = require("./storage");
-const { clients, WebSocket } = require("../shared/shared");
+const { clients, WebSocket, mqttClient } = require("../shared/shared");
 
 async function handleGetZones(req, res) {
     try {
@@ -86,12 +86,26 @@ async function handleResolveTrigger(req, res) {
     const resolved = await resolveTrigger({ id, remarks });
     if (resolved){
 
+        const triggerExist = getTriggers().some((trigger)=> trigger.resolved === false);
+        
+
+        if(!triggerExist) {
+
+
+            mqttClient.publish("cooldown", JSON.stringify({ data: "cooldown" }), (err) => {
+                if (err) {
+                    console.log("Error publishing message while cooling down: " + err);
+                }
+            });
+        }
         
         clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify({ newLog:{data: "triggerResolved"} }));
             }
         });
+
+        
 
         return res.status(200).json({
             success: true,
@@ -130,6 +144,15 @@ async function handleArmDisarm(req, res) {
 
     const currentState = await setSystemState(req.body.state);
     if(currentState) {
+
+        
+
+        mqttClient.publish("arm-disarm", JSON.stringify({ state: currentState }), (err)=>{
+            if (err) {
+                console.log("Error publishing message while changing state: " + err);
+            }
+        });
+
         return res.status(200).json({
             success: true,
             message: "System state set to: " + currentState,

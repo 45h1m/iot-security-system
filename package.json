@@ -1,0 +1,11 @@
+{
+  "name": "realtime-io-security-system",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "npm run build:server && npm run build:frontend",
+    "build:server": "cd server && npm install",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "dev": "cd server && npm run dev",
+    "start": "node ./server/server.js"
+  }
+}

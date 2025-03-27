@@ -1,9 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
-const mqtt = require("mqtt");
 require("dotenv").config();
-const { initStorage } = require("./controllers/storage");
 const WebSocket = require("./shared/shared");
 const path = require("path");
 
@@ -13,7 +11,7 @@ const { mqttHandler } = require("./controllers/mqttHandler");
 const app = express();
 const port = process.env.PORT || 80;
 
-const {clients, wss}=require('./shared/shared');
+const {clients, wss, mqttClient}=require('./shared/shared');
 const { webSocketHandler } = require("./controllers/webSocketHandler");
 
 // Middleware
@@ -22,21 +20,8 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(express.static(path.join(__dirname, '../client/dist')));
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-
-const options = {
-    host: process.env.MQTT_HOST || "",
-    port: process.env.MQTT_PORT || 8883,
-    protocol: "mqtts",
-    username: process.env.MQTT_USERNAME || "",
-    password: process.env.MQTT_PASSWORD || "",
-};
-
-console.log("Trying to connect to MQTT broker");
-console.log(options);
-// Connect to MQTT broker
-const mqttClient = mqtt.connect(options); // Update with your MQTT broker URL
 
 mqttClient.on("connect", () => {
     console.log("Connected to MQTT broker");

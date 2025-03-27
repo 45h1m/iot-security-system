@@ -1,4 +1,4 @@
-const { clients, WebSocket } = require("../shared/shared");
+const { clients, WebSocket, mqttClient } = require("../shared/shared");
 const { getZones, getTriggers, createTrigger, createLog, getSystemState, setSystemState } = require("./storage");
 async function handleSensorData(data) {
     clients.forEach((client) => {
@@ -41,6 +41,13 @@ async function handleArmDisarm(data) {
             console.log("something went wrong while creating arm-disarm log.");
             return;
         }
+
+        mqttClient.publish("arm-disarm-app", JSON.stringify({ state: state }), (err)=>{
+            if (err) {
+                console.log("Error publishing message while changing state: " + err);
+            }
+        });
+
         clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify({ 
@@ -50,6 +57,7 @@ async function handleArmDisarm(data) {
             }
         });
     } catch (error) {
+        
         console.log("failed handling arm-disarm: " + error);
     }
 }
@@ -97,9 +105,23 @@ async function handleTrigger(data) {
     }
 }
 
+async function handleDeviceOnline(data) {
+
+    await createLog({ type: `device-online`, description: `Device came online.` });
+
+    const state = await getSystemState();
+
+    mqttClient.publish("arm-disarm-app", JSON.stringify({ state: state }), (err)=>{
+        if (err) {
+            console.log("Error publishing message while changing state: " + err);
+        }
+    });
+
+    console.log("Device is online.");
+}
+
 async function mqttHandler(topic, data) {
     console.log(`Received MQTT message on topic ${topic}: ${data.toString()}`);
-    console.log(typeof data)
     try {
         if(Buffer.isBuffer(data)) data = JSON.parse(data.toString());
         if(typeof data === "string") data = JSON.parse(data);
@@ -112,6 +134,7 @@ async function mqttHandler(topic, data) {
     topic === "panic" && handlePanic(data);
     topic === "arm-disarm" && handleArmDisarm(data);
     topic === "trigger" && handleTrigger(data);
+    topic === "device-online" && handleDeviceOnline(data);
 }
 
 module.exports = { mqttHandler };
