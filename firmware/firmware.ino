@@ -81,6 +81,7 @@ const String DISARM_PASSWORD = "4321";
 // Password entry variables
 String passwordEntry = "";
 bool isPasswordMode = false;
+bool isSilenceMode = false;  // Flag to indicate silence mode
 SystemState targetState = DISARMED;
 
 
@@ -256,39 +257,6 @@ void loop() {
 
   // Update LCD based on current state
   updateDisplay();
-
-  // // Get key press
-  // char key = keypad.getKey();
-
-  // if (key) {
-  //   Serial.println("Key pressed: " + String(key));
-
-  //   // Handle backspace (using * as backspace)
-  //   if (key == '*' && inputStr.length() > 0) {
-  //     inputStr = inputStr.substring(0, inputStr.length() - 1);
-  //     lcd.clear();
-  //     lcd.setCursor(0, 0);
-  //     lcd.print("Input:");
-  //     lcd.setCursor(0, 1);
-  //     lcd.print(inputStr);
-  //   }
-  //   // Handle clear (using # as clear)
-  //   else if (key == '#') {
-  //     inputStr = "";
-  //     lcd.clear();
-  //     lcd.setCursor(0, 0);
-  //     lcd.print("Input:");
-  //   }
-  //   // Add key to input string if not control characters and not exceeding max length
-  //   else if (key != '*' && key != '#' && inputStr.length() < MAX_INPUT_LENGTH) {
-  //     inputStr += key;
-  //     lcd.setCursor(0, 1);
-  //     lcd.print(inputStr);
-
-  //     // Publish keystroke to MQTT
-  //     publishKeyStroke(key);
-  //   }
-  // }
 }
 
 void publishKeyStroke(char key) {
@@ -485,40 +453,13 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-// void handleMainMenuSelection(char key) {
-//   switch (key) {
-//     case '1':  // Arm System
-//       startPasswordEntry(ARMED);
-//       break;
-//     case '2':  // Disarm System
-//       startPasswordEntry(DISARMED);
-//       break;
-//     case '3':  // Silent Mode
-//       startPasswordEntry(SILENT_MODE);
-//       break;
-//   }
-// }
-
-
-// void handlePasswordEntry(char key) {
-//   if (key == '#') {  // Confirm password
-//     validatePassword();
-//   } else if (key == '*') {  // Backspace
-//     if (!passwordEntry.isEmpty()) {
-//       passwordEntry = passwordEntry.substring(0, passwordEntry.length() - 1);
-//     }
-//   } else if (passwordEntry.length() < 4 && isdigit(key)) {
-//     passwordEntry += key;
-//   }
-// }
-
-
-
 // Keypad input handling
 void handleKeyPress(char key) {
   if (isPasswordMode) {
     // Password entry mode
     handlePasswordEntry(key);
+  } else if (isSilenceMode) {
+    handleSilenceEntry(key);
   } else {
     // Normal state selection mode
     switch (currentState) {
@@ -532,7 +473,7 @@ void handleKeyPress(char key) {
         if (key == '1') {  // Disarm system
           startPasswordEntry(DISARMED);
         } else if (key == '*') {  // Silence alarm
-          silenceAlarm();
+          startSilenceEntry();
         }
         break;
     }
@@ -554,10 +495,32 @@ void handlePasswordEntry(char key) {
   }
 }
 
+
+// Handle silence entry logic
+void handleSilenceEntry(char key) {
+  if (key == '#') {  // Confirm password
+    validateSilence();
+    isSilenceMode = false;
+  } else if (key == '*') {  // Backspace
+    if (!passwordEntry.isEmpty()) {
+      passwordEntry = passwordEntry.substring(0, passwordEntry.length() - 1);
+    }
+  } else if (passwordEntry.length() < 4 && isdigit(key)) {
+    // Add digit to password entry if length is less than 4
+    passwordEntry += key;
+  }
+}
+
 // Start password entry process
 void startPasswordEntry(SystemState targetState) {
   passwordEntry = "";
   isPasswordMode = true;
+}
+
+// Start silence entry process
+void startSilenceEntry() {
+  passwordEntry = "";
+  isSilenceMode = true;
 }
 
 // Validate entered password
@@ -582,6 +545,23 @@ void validatePassword(SystemState targetState) {
 
   passwordEntry = "";
   isPasswordMode = false;
+}
+
+
+// Validate entered password for silence
+void validateSilence() {
+  if (passwordEntry == DISARM_PASSWORD) {
+    silenceAlarm();
+  } else {
+    // Optional: Add failed password attempt handling
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Invalid Password");
+    delay(1000);
+  }
+
+  passwordEntry = "";
+  isSilenceMode = false;
 }
 
 // Silence the alarm
@@ -613,6 +593,12 @@ void updateDisplay() {
 
   if (isPasswordMode) {
     lcd.print("Enter Password:");
+    lcd.setCursor(0, 1);
+    for (int i = 0; i < passwordEntry.length(); i++) {
+      lcd.print("*");
+    }
+  } else if (isSilenceMode) {
+    lcd.print("Silence Passwd:");
     lcd.setCursor(0, 1);
     for (int i = 0; i < passwordEntry.length(); i++) {
       lcd.print("*");
