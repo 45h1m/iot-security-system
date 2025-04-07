@@ -126,7 +126,7 @@ struct SensorConfig {
 const int SENSOR_COUNT = 13;
 SensorConfig sensors[SENSOR_COUNT] = {
   // Full GPIO Pins
-  { 4, "zone0", false },
+  { 4, "zone0", true }, // false == normally open
   { 5, "zone1", false },
   { 12, "zone2", false },
   { 13, "zone3", false },
@@ -244,7 +244,7 @@ void loop() {
   // Keep MQTT connection alive
   mqttClient.loop();
 
-  checkSensors();
+  if(currentState == ARMED) checkSensors();
 
   // Handle keypad input
   char key = keypad.getKey();
@@ -344,6 +344,9 @@ void reconnectMQTT() {
       // Subscribe to arm-disarm topic
       mqttClient.subscribe("arm-disarm-app");
       mqttClient.subscribe("cooldown");
+
+      sendOnlineMessage();
+      
       return;
     } else {
       Serial.print("failed, rc=");
@@ -648,4 +651,13 @@ void checkTriggerCooldown() {
 void cooldown() {
   digitalWrite(TRIGGER_LED_PIN, LOW);
   noTone(BUZZER_PIN);
+}
+
+void sendOnlineMessage() {
+  // Create and publish trigger JSON
+  StaticJsonDocument<100> jsonDoc;
+  jsonDoc["state"] = "online";
+  char jsonBuffer[100];
+  serializeJson(jsonDoc, jsonBuffer);
+  mqttClient.publish("device-online", jsonBuffer);
 }
