@@ -1,0 +1,233 @@
+#include "esp_camera.h"
+#include "Arduino.h"
+#include "FS.h"                // File System related headers
+#include "SD_MMC.h"            // SD Card ESP32 specific library (usually uses slot 1)
+#include "soc/soc.h"           // Disable brownout problems
+#include "soc/rtc_cntl_reg.h"  // Disable brownout problems
+#include "driver/rtc_io.h"
+
+// --- Pin Definitions ---
+// Pin definition for CAMERA_MODEL_AI_THINKER
+#define PWDN_GPIO_NUM     32
+#define RESET_GPIO_NUM    -1 // NC
+#define XCLK_GPIO_NUM      0
+#define SIOD_GPIO_NUM     26
+#define SIOC_GPIO_NUM     27
+
+#define Y9_GPIO_NUM       35
+#define Y8_GPIO_NUM       34
+#define Y7_GPIO_NUM       39
+#define Y6_GPIO_NUM       36
+#define Y5_GPIO_NUM       21
+#define Y4_GPIO_NUM       19
+#define Y3_GPIO_NUM       18
+#define Y2_GPIO_NUM        5
+#define VSYNC_GPIO_NUM    25
+#define HREF_GPIO_NUM     23
+#define PCLK_GPIO_NUM     22
+
+// --- Trigger Pin ---
+#define TRIGGER_PIN 13 // GPIO pin to trigger image capture (Choose an available GPIO)
+                       // Common available GPIOs on ESP32-CAM: 1, 3, 12, 13, 14, 15, 16
+                       // GPIO 12 might be problematic if used by SD card in 4-bit mode (but we use 1-bit SD_MMC)
+                       // Avoid GPIO 0 (used for boot mode) and GPIO 2 (often connected to onboard LED and SD D0)
+
+// --- Global Variables ---
+int pictureNumber = 0;
+bool triggerPinState = LOW; // Stores the previous state of the trigger pin
+
+// --- Function Declarations ---
+bool initCamera();
+bool initSDCard();
+void captureAndSavePhoto();
+
+void setup() {
+  // Disable brownout detector
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+
+  Serial.begin(115200);
+  Serial.println("\n\n--- ESP32-CAM Capture on GPIO Trigger ---");
+
+  // Configure the trigger pin
+  pinMode(TRIGGER_PIN, INPUT_PULLDOWN); // Use PULLDOWN if no external resistor ensures LOW state
+  // Alternatively, use INPUT if you have an external pull-down resistor
+  // pinMode(TRIGGER_PIN, INPUT);
+  triggerPinState = digitalRead(TRIGGER_PIN); // Read initial state
+  Serial.printf("Trigger Pin %d configured. Initial state: %s\n", TRIGGER_PIN, triggerPinState == HIGH ? "HIGH" : "LOW");
+
+
+  // Initialize SD Card
+  if (!initSDCard()) {
+    Serial.println("SD Card initialization failed! Halting.");
+    while (1); // Stop execution
+  }
+
+  // Initialize Camera
+  if (!initCamera()) {
+    Serial.println("Camera initialization failed! Halting.");
+    while (1); // Stop execution
+  }
+
+  Serial.println("Setup complete. Waiting for trigger...");
+}
+
+void loop() {
+  // Read the current state of the trigger pin
+  bool currentState = digitalRead(TRIGGER_PIN);
+
+  Serial.println(currentState);
+
+  // Check for a rising edge (LOW to HIGH transition)
+  if (currentState == HIGH && triggerPinState == LOW) {
+    Serial.printf("Trigger detected on GPIO %d!\n", TRIGGER_PIN);
+    captureAndSavePhoto();
+    delay(200); // Small delay to avoid bouncing issues / immediate re-triggering
+  }
+
+  // Update the previous state for the next loop iteration
+  triggerPinState = currentState;
+
+  // Small delay to prevent hammering the CPU
+  delay(2000);
+}
+
+// --- Function Definitions ---
+
+bool initSDCard() {
+  Serial.println("Initializing SD card using SD_MMC...");
+
+  // Use SD_MMC interface (typically faster, uses dedicated pins)
+  // 1-bit mode is commonly used on ESP32-CAM boards
+  // Pins: CLK=14, CMD=15, D0=2 (Slot 1) - D1,D2,D3 not used in 1-bit mode
+  if (!SD_MMC.begin("/sdcard", true)) { // "/sdcard" = mount point, true = 1-bit mode
+    Serial.println("SD_MMC Card Mount Failed!");
+    Serial.println("Check formatting (FAT32), connections, and card presence.");
+    return false;
+  }
+
+  uint8_t cardType = SD_MMC.cardType();
+  if (cardType == CARD_NONE) {
+    Serial.println("No SD_MMC card attached");
+    return false;
+  }
+
+  Serial.print("SD_MMC Card Type: ");
+  if (cardType == CARD_MMC) {
+    Serial.println("MMC");
+  } else if (cardType == CARD_SD) {
+    Serial.println("SDSC");
+  } else if (cardType == CARD_SDHC) {
+    Serial.println("SDHC");
+  } else {
+    Serial.println("UNKNOWN");
+  }
+
+  uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
+  Serial.printf("SD_MMC Card Size: %lluMB\n", cardSize);
+  Serial.printf("Total space: %lluMB\n", SD_MMC.totalBytes() / (1024 * 1024));
+  Serial.printf("Used space: %lluMB\n", SD_MMC.usedBytes() / (1024 * 1024));
+
+  // Find the next available picture number
+  while(true) {
+    String filename = "/picture" + String(pictureNumber) + ".jpg";
+    if (!SD_MMC.exists(filename)) {
+      break; // Found a non-existent filename
+    }
+    pictureNumber++;
+  }
+  Serial.printf("Starting picture number: %d\n", pictureNumber);
+
+  return true;
+}
+
+bool initCamera() {
+  Serial.println("Initializing Camera...");
+  camera_config_t config;
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer = LEDC_TIMER_0;
+  config.pin_d0 = Y2_GPIO_NUM;
+  config.pin_d1 = Y3_GPIO_NUM;
+  config.pin_d2 = Y4_GPIO_NUM;
+  config.pin_d3 = Y5_GPIO_NUM;
+  config.pin_d4 = Y6_GPIO_NUM;
+  config.pin_d5 = Y7_GPIO_NUM;
+  config.pin_d6 = Y8_GPIO_NUM;
+  config.pin_d7 = Y9_GPIO_NUM;
+  config.pin_xclk = XCLK_GPIO_NUM;
+  config.pin_pclk = PCLK_GPIO_NUM;
+  config.pin_vsync = VSYNC_GPIO_NUM;
+  config.pin_href = HREF_GPIO_NUM;
+  config.pin_sccb_sda = SIOD_GPIO_NUM;
+  config.pin_sccb_scl = SIOC_GPIO_NUM;
+  config.pin_pwdn = PWDN_GPIO_NUM;
+  config.pin_reset = RESET_GPIO_NUM;
+  config.xclk_freq_hz = 20000000; // 20MHz clock
+  config.pixel_format = PIXFORMAT_JPEG; // Use JPEG for smaller file size
+
+  // Select frame size - start lower if problems occur
+  // config.frame_size = FRAMESIZE_UXGA; // (1600 x 1200) - High resolution
+  // config.frame_size = FRAMESIZE_SXGA; // (1280 x 1024)
+  // config.frame_size = FRAMESIZE_XGA;  // (1024 x 768)
+  config.frame_size = FRAMESIZE_SVGA; // (800 x 600) - Good balance
+  // config.frame_size = FRAMESIZE_VGA;  // (640 x 480)
+
+  config.jpeg_quality = 12; // 0-63 lower number means higher quality
+  config.fb_count = 1;      // Use 1 frame buffer when not streaming
+
+  // Initialize camera
+  esp_err_t err = esp_camera_init(&config);
+  if (err != ESP_OK) {
+    Serial.printf("Camera init failed with error 0x%x\n", err);
+    return false;
+  }
+    Serial.println("Camera init success!");
+
+  // Optional: Adjust camera settings (exposure, gain, etc.) after init if needed
+  // sensor_t * s = esp_camera_sensor_get();
+  // s->set_brightness(s, 0);     // -2 to 2
+  // s->set_contrast(s, 0);       // -2 to 2
+  // s->set_saturation(s, 0);     // -2 to 2
+  // s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect)
+
+  return true;
+}
+
+
+void captureAndSavePhoto() {
+  Serial.println("Capturing photo...");
+
+  // Acquire a frame from the camera
+  camera_fb_t * fb = esp_camera_fb_get();
+  if (!fb) {
+    Serial.println("Camera capture failed");
+    // Optional: Try to re-initialize camera or SD card here?
+    return;
+  }
+  Serial.printf("Picture taken! Size: %u bytes\n", fb->len);
+
+  // Create filename
+  String path = "/picture" + String(pictureNumber) + ".jpg";
+  Serial.printf("Saving file: %s\n", path.c_str());
+
+  // Open file for writing
+  fs::FS &fs = SD_MMC; // Use SD_MMC filesystem
+  File file = fs.open(path.c_str(), FILE_WRITE);
+  if (!file) {
+    Serial.println("Failed to open file for writing");
+  } else {
+    // Write data to file
+    if (file.write(fb->buf, fb->len)) {
+      Serial.printf("File saved: %s\n", path.c_str());
+      pictureNumber++; // Increment picture number only on successful write
+    } else {
+      Serial.println("File write failed");
+    }
+    // Close the file
+    file.close();
+  }
+
+  // IMPORTANT: Return the frame buffer memory back to the camera driver
+  esp_camera_fb_return(fb);
+
+  // Optional: Blink LED or give other feedback
+}

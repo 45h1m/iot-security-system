@@ -16,6 +16,7 @@ const { webSocketHandler } = require("./controllers/webSocketHandler");
 
 // Middleware
 app.use(cors());
+
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
