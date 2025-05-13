@@ -400,6 +400,11 @@ void checkSensors() {
 
 
 void triggerSensor(const String& zoneName) {
+
+  digitalWrite(TRIGGER_LED_PIN, HIGH);
+  tone(BUZZER_PIN, 1000);  // 1kHz tone
+  triggerStartTime = millis();
+  
   // Create JSON payload
   StaticJsonDocument<100> jsonDoc;
   jsonDoc["zone"] = zoneName;
